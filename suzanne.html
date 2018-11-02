@@ -1,43 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Suzanne</title>
-    <link href="favicon.png" rel="icon" type="image/x-icon"/>
-    <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1">
-    <style>
-    body {
-        margin: 0;
-        overflow: hidden;
-    }
-    #filament-canvas {
-        touch-action: none;
-        width: 100%;
-        height: 100%;
-    }
-    </style>
+<title>Filament Suzanne</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1">
+<style>
+body { margin: 0; overflow: hidden; }
+canvas { touch-action: none; width: 100%; height: 100%; }
+</style>
 </head>
 <body>
-    <canvas id="filament-canvas"></canvas>
-    <script src="suzanne.js"></script>
-    <script src="filaweb.js"></script>
-    <script>
+<canvas></canvas>
+<script src="filament.js"></script>
+<script src="gl-matrix-min.js"></script>
+<script>
 
-    function load_etcfile(basename) {
-        return use_etc ? load_rawfile(basename + "_etc.ktx") : load_rawfile(basename + ".ktx");
+const iblfile = 'syferfontein_18d_clear_2k/syferfontein_18d_clear_2k_ibl.ktx';
+const skyfile = 'syferfontein_18d_clear_2k/syferfontein_18d_clear_2k_skybox.ktx';
+
+Filament.init([
+    'textured.filamat',
+    'suzanne.filamesh',
+    'albedo.ktx',
+    'ao.ktx',
+    'metallic.ktx',
+    'normal.ktx',
+    'roughness.ktx',
+    iblfile, skyfile
+], () => {
+    window.VertexAttribute = Filament.VertexAttribute;
+    window.AttributeType = Filament.VertexBuffer$AttributeType;
+    window.PrimitiveType = Filament.RenderableManager$PrimitiveType;
+    window.IndexType = Filament.IndexBuffer$IndexType;
+    window.Fov = Filament.Camera$Fov;
+    window.LightType = Filament.LightManager$Type;
+    window.app = new App(document.getElementsByTagName('canvas')[0]);
+});
+
+class App {
+    constructor(canvas) {
+        this.canvas = canvas;
+        const engine = this.engine = Filament.Engine.create(this.canvas);
+        this.scene = engine.createScene();
+
+        const sunlight = Filament.EntityManager.get().create();
+        Filament.LightManager.Builder(LightType.SUN)
+            .color([0.98, 0.92, 0.89])
+            .intensity(100000.0)
+            .direction([0.6, -1.0, -0.8])
+            .castShadows(true)
+            .sunAngularRadius(1.9)
+            .sunHaloSize(10.0)
+            .sunHaloFalloff(80.0)
+            .build(engine, sunlight);
+        this.scene.addEntity(sunlight);
+
+        const indirectLight = this.ibl = engine.createIblFromKtx(iblfile);
+        this.scene.setIndirectLight(indirectLight);
+        indirectLight.setIntensity(100000);
+
+        const skybox = engine.createSkyFromKtx(skyfile);
+        this.scene.setSkybox(skybox);
+
+        const material = engine.createMaterial('textured.filamat');
+        const matinstance = material.createInstance();
+
+        const sampler = new Filament.TextureSampler(
+            Filament.MinFilter.LINEAR_MIPMAP_LINEAR,
+            Filament.MagFilter.LINEAR,
+            Filament.WrapMode.CLAMP_TO_EDGE);
+
+        const albedo = engine.createTextureFromKtx('albedo.ktx', {"srgb": true});
+        const roughness = engine.createTextureFromKtx('roughness.ktx');
+        const metallic = engine.createTextureFromKtx('metallic.ktx');
+        const normal = engine.createTextureFromKtx('normal.ktx');
+        const ao = engine.createTextureFromKtx('ao.ktx');
+
+        matinstance.setTextureParameter('albedo', albedo, sampler)
+        matinstance.setTextureParameter('roughness', roughness, sampler)
+        matinstance.setTextureParameter('metallic', metallic, sampler)
+        matinstance.setTextureParameter('normal', normal, sampler)
+        matinstance.setTextureParameter('ao', ao, sampler)
+
+        const mesh = engine.loadFilamesh('suzanne.filamesh', matinstance);
+        this.shaderball = mesh.renderable;
+        this.scene.addEntity(mesh.renderable);
+
+        this.swapChain = engine.createSwapChain();
+        this.renderer = engine.createRenderer();
+        this.camera = engine.createCamera();
+        this.view = engine.createView();
+        this.view.setCamera(this.camera);
+        this.view.setScene(this.scene);
+        this.resize();
+        this.render = this.render.bind(this);
+        this.resize = this.resize.bind(this);
+        window.addEventListener('resize', this.resize);
+        window.requestAnimationFrame(this.render);
     }
 
-    load({
-        'albedo':                    (use_s3tc ? load_rawfile('monkey/albedo_s3tc.ktx') :
-                                     (use_astc ? load_rawfile('monkey/albedo_astc.ktx') :
-                                                 load_rawfile('monkey/albedo.ktx'))),
-        'metallic':                  load_etcfile('monkey/metallic'),
-        'roughness':                 load_etcfile('monkey/roughness'),
-        'normal':                    load_etcfile('monkey/normal'),
-        'ao':                        load_etcfile('monkey/ao'),
-        'mesh':                      load_rawfile('monkey/mesh.filamesh'),
-        'syferfontein_18d_clear_2k': load_cubemap('syferfontein_18d_clear_2k', '.ktx')
-    });
-    </script>
+    render() {
+        const radians = Date.now() / 1000;
+        const transform = mat4.fromRotation(mat4.create(), radians, [0, 1, 0]);
+        const tcm = this.engine.getTransformManager();
+        tcm.setTransform(tcm.getInstance(this.shaderball), transform);
+        this.renderer.render(this.swapChain, this.view);
+        window.requestAnimationFrame(this.render);
+    }
+
+    resize() {
+        const dpr = window.devicePixelRatio;
+        const width = this.canvas.width = window.innerWidth * dpr;
+        const height = this.canvas.height = window.innerHeight * dpr;
+        this.view.setViewport([0, 0, width, height]);
+        const eye = [0, 0, 4], center = [0, 0, 0], up = [0, 1, 0];
+        this.camera.lookAt(eye, center, up);
+        const aspect = width / height;
+        const fov = aspect < 1 ? Fov.HORIZONTAL : Fov.VERTICAL;
+        this.camera.setProjectionFov(45, aspect, 1.0, 10.0, fov);
+    }
+}
+</script>
 </body>
 </html>
