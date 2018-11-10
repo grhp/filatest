@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700|Tangerine:700|Inconsolata" rel="stylesheet">
+<link href="main.css" rel="stylesheet" type="text/css">
+</head>
+<body class="verbiage">
+<div class="demo_frame"><iframe src="demo_suzanne.html"></iframe><a href="demo_suzanne.html">&#x1F517;</a></div>
+<p>This tutorial will describe how to create the <strong>suzanne</strong> demo, introducing you to compressed
+textures, mipmap generation, asynchronous texture loading, and trackball rotation.</p>
+<p>Much like the <a href="tutorial_redball.html">previous tutorial</a>, you'll need to use the command-line tools that can be found in
+the appropriate <a href="//github.com/google/filament/releases">Filament release</a> for your development machine.</p>
+<h2>Create filamesh file</h2>
+<p>TBD</p>
+<h2>Define textured material</h2>
+<p>Create the following file in your favorite text editor and call it <code>textured.mat</code>. Unlike the
+plastic material we defined in the previous tutorial, this adds a <code>uv0</code> attribute and assigns
+texture samplers to several parameter slots. For example, a normal map is used to add scratches,
+and an albedo map is used to paint the eyes.</p>
+<p>Again, for more information on materials, see the official document describing the <a href="https://google.github.io/filament/Materials.md.html">Filament
+Material System</a>.</p>
+<div class="highlight" style="background: #f8f8f8"><pre style="line-height: 125%"><span></span>material {
+    name : textured,
+    requires : [ uv0 ],
+    shadingModel : lit,
+    parameters : [
+        { type : sampler2d, name : albedo },
+        { type : sampler2d, name : roughness },
+        { type : sampler2d, name : metallic },
+        { type : float, name : clearCoat },
+        { type : sampler2d, name : normal },
+        { type : sampler2d, name : ao }
+    ],
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        material.normal = texture(materialParams_normal, getUV0()).xyz * 2.0 - 1.0;
+        prepareMaterial(material);
+        material.baseColor = texture(materialParams_albedo, getUV0());
+        material.roughness = texture(materialParams_roughness, getUV0()).r;
+        material.metallic = texture(materialParams_metallic, getUV0()).r;
+        material.clearCoat = materialParams.clearCoat;
+        material.ambientOcclusion = texture(materialParams_ao, getUV0()).r;
+    }
+}
+</pre></div>
+
+<p>Next, invoke <code>matc</code> as follows.</p>
+<div class="highlight" style="background: #f8f8f8"><pre style="line-height: 125%"><span></span>matc -O -a opengl -p mobile -o textured.filamat textured.mat
+</pre></div>
+
+<p>You should now have a material archive in your working directory, which we'll use later in the
+tutorial.</p>
+<h2>Bake environment map</h2>
+<p>Next we'll use Filament's <code>cmgen</code> tool to consume a HDR environment map in latlong format, and
+produce two cubemap files: a mipmapped IBL and a blurry skybox.</p>
+<p>Download <a href="//github.com/google/filament/blob/master/third_party/environments/syferfontein_18d_clear_2k.hdr">syferfontein_18d_clear_2k.hdr</a>, then invoke the following command in your terminal.</p>
+<div class="highlight" style="background: #f8f8f8"><pre style="line-height: 125%"><span></span>cmgen -x . --format<span style="color: #666666">=</span>ktx --size<span style="color: #666666">=256</span> --extract-blur<span style="color: #666666">=0</span>.1 syferfontein_18d_clear_2k.hdr
+</pre></div>
+
+<p>You should now have a <code>syferfontein_18d_clear_2k</code> folder containing a couple KTX files for the IBL
+and skybox, as well as a text file with spherical harmonics coefficients. Move the KTX files into
+your project folder. You can discard the text file because the IBL KTX contains these coefficients
+in its metadata.</p>
+<h2>Create HTML and JavaScript</h2>
+<p>Create a text file called <code>suzanne.html</code> and copy over the HTML that we used in the <a href="tutorial_redball.html">previous
+tutorial</a>. Change the last script tag from <code>redball.js</code> to <code>suzanne.js</code>.</p>
+<p>Next, create <code>suzanne.js</code> with the following content.</p>
+<div class="highlight" style="background: #f8f8f8"><pre style="line-height: 125%"><span></span><span style="color: #008000; font-weight: bold">const</span> ibl_suffix <span style="color: #666666">=</span> Filament.getSupportedFormatSuffix(<span style="color: #BA2121">&#39;foo&#39;</span>);
+<span style="color: #008000; font-weight: bold">const</span> albedo_suffix <span style="color: #666666">=</span> Filament.getSupportedFormatSuffix(<span style="color: #BA2121">&#39;foo&#39;</span>);
+<span style="color: #008000; font-weight: bold">const</span> texture_suffix <span style="color: #666666">=</span> Filament.getSupportedFormatSuffix(<span style="color: #BA2121">&#39;foo&#39;</span>);
+
+<span style="color: #008000; font-weight: bold">const</span> env <span style="color: #666666">=</span> <span style="color: #BA2121">&#39;syferfontein_18d_clear_2k&#39;</span>
+<span style="color: #008000; font-weight: bold">const</span> ibl_url <span style="color: #666666">=</span> <span style="color: #BA2121">`</span><span style="color: #BB6688; font-weight: bold">${</span>env<span style="color: #BB6688; font-weight: bold">}</span><span style="color: #BA2121">_ibl</span><span style="color: #BB6688; font-weight: bold">${</span>ibl_suffix<span style="color: #BB6688; font-weight: bold">}</span><span style="color: #BA2121">.ktx`</span>;
+<span style="color: #008000; font-weight: bold">const</span> sky_url <span style="color: #666666">=</span> <span style="color: #BA2121">`</span><span style="color: #BB6688; font-weight: bold">${</span>env<span style="color: #BB6688; font-weight: bold">}</span><span style="color: #BA2121">_skybox.ktx`</span>;
+<span style="color: #008000; font-weight: bold">const</span> albedo_url <span style="color: #666666">=</span> <span style="color: #BA2121">`albedo</span><span style="color: #BB6688; font-weight: bold">${</span>albedo_suffix<span style="color: #BB6688; font-weight: bold">}</span><span style="color: #BA2121">.ktx`</span>;
+<span style="color: #008000; font-weight: bold">const</span> ao_url <span style="color: #666666">=</span> <span style="color: #BA2121">`ao</span><span style="color: #BB6688; font-weight: bold">${</span>texture_suffix<span style="color: #BB6688; font-weight: bold">}</span><span style="color: #BA2121">.ktx`</span>;
+<span style="color: #008000; font-weight: bold">const</span> metallic_url <span style="color: #666666">=</span> <span style="color: #BA2121">`metallic</span><span style="color: #BB6688; font-weight: bold">${</span>texture_suffix<span style="color: #BB6688; font-weight: bold">}</span><span style="color: #BA2121">.ktx`</span>;
+<span style="color: #008000; font-weight: bold">const</span> normal_url <span style="color: #666666">=</span> <span style="color: #BA2121">`normal</span><span style="color: #BB6688; font-weight: bold">${</span>texture_suffix<span style="color: #BB6688; font-weight: bold">}</span><span style="color: #BA2121">.ktx`</span>;
+<span style="color: #008000; font-weight: bold">const</span> roughness_url <span style="color: #666666">=</span> <span style="color: #BA2121">`roughness</span><span style="color: #BB6688; font-weight: bold">${</span>texture_suffix<span style="color: #BB6688; font-weight: bold">}</span><span style="color: #BA2121">.ktx`</span>;
+<span style="color: #008000; font-weight: bold">const</span> filamat_url <span style="color: #666666">=</span> <span style="color: #BA2121">&#39;textured.filamat&#39;</span>;
+<span style="color: #008000; font-weight: bold">const</span> filamesh_url <span style="color: #666666">=</span> <span style="color: #BA2121">&#39;suzanne.filamesh&#39;</span>;
+
+Filament.init([ filamat_url, filamesh_url, sky_url ], () =&gt; {
+    <span style="color: #008000">window</span>.VertexAttribute <span style="color: #666666">=</span> Filament.VertexAttribute;
+    <span style="color: #008000">window</span>.AttributeType <span style="color: #666666">=</span> Filament.VertexBuffer$AttributeType;
+    <span style="color: #008000">window</span>.PrimitiveType <span style="color: #666666">=</span> Filament.RenderableManager$PrimitiveType;
+    <span style="color: #008000">window</span>.IndexType <span style="color: #666666">=</span> Filament.IndexBuffer$IndexType;
+    <span style="color: #008000">window</span>.Fov <span style="color: #666666">=</span> Filament.Camera$Fov;
+    <span style="color: #008000">window</span>.LightType <span style="color: #666666">=</span> Filament.LightManager$Type;
+    <span style="color: #008000">window</span>.app <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">new</span> App(<span style="color: #008000">document</span>.getElementsByTagName(<span style="color: #BA2121">&#39;canvas&#39;</span>)[<span style="color: #666666">0</span>]);
+});
+
+<span style="color: #008000; font-weight: bold">class</span> App {
+    constructor(canvas) {
+        <span style="color: #008000; font-weight: bold">this</span>.canvas <span style="color: #666666">=</span> canvas;
+        <span style="color: #008000; font-weight: bold">this</span>.trackball <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">new</span> Trackball(canvas, {startSpin<span style="color: #666666">:</span> <span style="color: #666666">0.035</span>});
+        <span style="color: #008000; font-weight: bold">const</span> engine <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">this</span>.engine <span style="color: #666666">=</span> Filament.Engine.create(canvas);
+        <span style="color: #008000; font-weight: bold">this</span>.scene <span style="color: #666666">=</span> engine.createScene();
+
+        <span style="color: #008000; font-weight: bold">const</span> sunlight <span style="color: #666666">=</span> Filament.EntityManager.get().create();
+        Filament.LightManager.Builder(LightType.SUN)
+            .color([<span style="color: #666666">0.98</span>, <span style="color: #666666">0.92</span>, <span style="color: #666666">0.89</span>])
+            .intensity(<span style="color: #666666">100000.0</span>)
+            .direction([<span style="color: #666666">0.6</span>, <span style="color: #666666">-1.0</span>, <span style="color: #666666">-0.8</span>])
+            .castShadows(<span style="color: #008000; font-weight: bold">true</span>)
+            .sunAngularRadius(<span style="color: #666666">1.9</span>)
+            .sunHaloSize(<span style="color: #666666">10.0</span>)
+            .sunHaloFalloff(<span style="color: #666666">80.0</span>)
+            .build(engine, sunlight);
+        <span style="color: #008000; font-weight: bold">this</span>.scene.addEntity(sunlight);
+
+        <span style="color: #008000; font-weight: bold">const</span> skybox <span style="color: #666666">=</span> engine.createSkyFromKtx(sky_url);
+        <span style="color: #008000; font-weight: bold">this</span>.scene.setSkybox(skybox);
+
+        <span style="color: #008000; font-weight: bold">const</span> material <span style="color: #666666">=</span> engine.createMaterial(filamat_url);
+        <span style="color: #008000; font-weight: bold">const</span> matinstance <span style="color: #666666">=</span> material.createInstance();
+
+        <span style="color: #008000; font-weight: bold">const</span> sampler <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">new</span> Filament.TextureSampler(
+            Filament.MinFilter.LINEAR_MIPMAP_LINEAR,
+            Filament.MagFilter.LINEAR,
+            Filament.WrapMode.CLAMP_TO_EDGE);
+
+        <span style="color: #008000; font-weight: bold">const</span> mesh <span style="color: #666666">=</span> engine.loadFilamesh(filamesh_url, matinstance);
+        <span style="color: #008000; font-weight: bold">this</span>.suzanne <span style="color: #666666">=</span> mesh.renderable;
+
+        Filament.fetch([ibl_url, albedo_url, roughness_url, metallic_url, normal_url, ao_url],
+                () =&gt; {
+            <span style="color: #008000; font-weight: bold">const</span> indirectLight <span style="color: #666666">=</span> engine.createIblFromKtx(ibl_url);
+            indirectLight.setIntensity(<span style="color: #666666">100000</span>);
+            <span style="color: #008000; font-weight: bold">this</span>.scene.setIndirectLight(indirectLight);
+
+            <span style="color: #008000; font-weight: bold">const</span> albedo <span style="color: #666666">=</span> engine.createTextureFromKtx(albedo_url, {srgb<span style="color: #666666">:</span> <span style="color: #008000; font-weight: bold">true</span>});
+            matinstance.setTextureParameter(<span style="color: #BA2121">&#39;albedo&#39;</span>, albedo, sampler);
+
+            <span style="color: #008000; font-weight: bold">const</span> roughness <span style="color: #666666">=</span> engine.createTextureFromKtx(roughness_url);
+            matinstance.setTextureParameter(<span style="color: #BA2121">&#39;roughness&#39;</span>, roughness, sampler);
+
+            <span style="color: #008000; font-weight: bold">const</span> metallic <span style="color: #666666">=</span> engine.createTextureFromKtx(metallic_url);
+            matinstance.setTextureParameter(<span style="color: #BA2121">&#39;metallic&#39;</span>, metallic, sampler);
+
+            <span style="color: #008000; font-weight: bold">const</span> normal <span style="color: #666666">=</span> engine.createTextureFromKtx(normal_url);
+            matinstance.setTextureParameter(<span style="color: #BA2121">&#39;normal&#39;</span>, normal, sampler);
+
+            <span style="color: #008000; font-weight: bold">const</span> ao <span style="color: #666666">=</span> engine.createTextureFromKtx(ao_url);
+            matinstance.setTextureParameter(<span style="color: #BA2121">&#39;ao&#39;</span>, ao, sampler);
+
+            <span style="color: #008000; font-weight: bold">this</span>.scene.addEntity(<span style="color: #008000; font-weight: bold">this</span>.suzanne);
+        });
+
+        <span style="color: #008000; font-weight: bold">this</span>.swapChain <span style="color: #666666">=</span> engine.createSwapChain();
+        <span style="color: #008000; font-weight: bold">this</span>.renderer <span style="color: #666666">=</span> engine.createRenderer();
+        <span style="color: #008000; font-weight: bold">this</span>.camera <span style="color: #666666">=</span> engine.createCamera();
+        <span style="color: #008000; font-weight: bold">this</span>.view <span style="color: #666666">=</span> engine.createView();
+        <span style="color: #008000; font-weight: bold">this</span>.view.setCamera(<span style="color: #008000; font-weight: bold">this</span>.camera);
+        <span style="color: #008000; font-weight: bold">this</span>.view.setScene(<span style="color: #008000; font-weight: bold">this</span>.scene);
+        <span style="color: #008000; font-weight: bold">this</span>.resize();
+        <span style="color: #008000; font-weight: bold">this</span>.render <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">this</span>.render.bind(<span style="color: #008000; font-weight: bold">this</span>);
+        <span style="color: #008000; font-weight: bold">this</span>.resize <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">this</span>.resize.bind(<span style="color: #008000; font-weight: bold">this</span>);
+        <span style="color: #008000">window</span>.addEventListener(<span style="color: #BA2121">&#39;resize&#39;</span>, <span style="color: #008000; font-weight: bold">this</span>.resize);
+        <span style="color: #008000">window</span>.requestAnimationFrame(<span style="color: #008000; font-weight: bold">this</span>.render);
+    }
+
+    render() {
+        <span style="color: #008000; font-weight: bold">const</span> tcm <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">this</span>.engine.getTransformManager();
+        <span style="color: #008000; font-weight: bold">const</span> inst <span style="color: #666666">=</span> tcm.getInstance(<span style="color: #008000; font-weight: bold">this</span>.suzanne);
+        tcm.setTransform(inst, <span style="color: #008000; font-weight: bold">this</span>.trackball.getMatrix());
+        inst.<span style="color: #008000; font-weight: bold">delete</span>();
+        <span style="color: #008000; font-weight: bold">this</span>.renderer.render(<span style="color: #008000; font-weight: bold">this</span>.swapChain, <span style="color: #008000; font-weight: bold">this</span>.view);
+        <span style="color: #008000">window</span>.requestAnimationFrame(<span style="color: #008000; font-weight: bold">this</span>.render);
+    }
+
+    resize() {
+        <span style="color: #008000; font-weight: bold">const</span> dpr <span style="color: #666666">=</span> <span style="color: #008000">window</span>.devicePixelRatio;
+        <span style="color: #008000; font-weight: bold">const</span> width <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">this</span>.canvas.width <span style="color: #666666">=</span> <span style="color: #008000">window</span>.innerWidth <span style="color: #666666">*</span> dpr;
+        <span style="color: #008000; font-weight: bold">const</span> height <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">this</span>.canvas.height <span style="color: #666666">=</span> <span style="color: #008000">window</span>.innerHeight <span style="color: #666666">*</span> dpr;
+        <span style="color: #008000; font-weight: bold">this</span>.view.setViewport([<span style="color: #666666">0</span>, <span style="color: #666666">0</span>, width, height]);
+        <span style="color: #008000; font-weight: bold">const</span> eye <span style="color: #666666">=</span> [<span style="color: #666666">0</span>, <span style="color: #666666">0</span>, <span style="color: #666666">4</span>], center <span style="color: #666666">=</span> [<span style="color: #666666">0</span>, <span style="color: #666666">0</span>, <span style="color: #666666">0</span>], up <span style="color: #666666">=</span> [<span style="color: #666666">0</span>, <span style="color: #666666">1</span>, <span style="color: #666666">0</span>];
+        <span style="color: #008000; font-weight: bold">this</span>.camera.lookAt(eye, center, up);
+        <span style="color: #008000; font-weight: bold">const</span> aspect <span style="color: #666666">=</span> width <span style="color: #666666">/</span> height;
+        <span style="color: #008000; font-weight: bold">const</span> fov <span style="color: #666666">=</span> aspect <span style="color: #666666">&lt;</span> <span style="color: #666666">1</span> <span style="color: #666666">?</span> Fov.HORIZONTAL <span style="color: #666666">:</span> Fov.VERTICAL;
+        <span style="color: #008000; font-weight: bold">this</span>.camera.setProjectionFov(<span style="color: #666666">45</span>, aspect, <span style="color: #666666">1.0</span>, <span style="color: #666666">10.0</span>, fov);
+    }
+}
+</pre></div>
+
+<p>The complete JavaScript file is available <a href="tutorial_suzanne.js">here</a>.</p>
+
+</body>
+</html>

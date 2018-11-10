@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en"><head>
-<link href="favicon.png" rel="icon" type="image/x-icon" />
 <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700|Tangerine:700|Inconsolata" rel="stylesheet">
 <link href="main.css" rel="stylesheet" type="text/css">
 </head>
@@ -14,11 +13,7 @@ We use a small Python script for weaving (generating HTML) and tangling
 <code>// TODO: &lt;some task&gt;</code>. These are special markers that get replaced by
 subsequent code blocks.</p>
 <h2>Start your project</h2>
-<p>First, create a directory for your web project and obtain <code>filament.js</code> and <code>filament.wasm</code> from
-the latest <a href="//github.com/google/filament/releases">filament-web tarball</a>. In the future, these
-files will be available on npm, which will allow you to use <a href="//yarnpkg.com/en/">yarn</a> or
-<a href="//unpkg.com">unpkg</a>.</p>
-<p>Next, create a text file called <code>triangle.html</code> and fill it with the following HTML. This creates
+<p>First, create a text file called <code>triangle.html</code> and fill it with the following HTML. This creates
 a mobile-friendly page with a full-screen canvas.</p>
 <div class="highlight" style="background: #f8f8f8"><pre style="line-height: 125%"><span></span><span style="color: #BC7A00">&lt;!DOCTYPE html&gt;</span>
 &lt;<span style="color: #008000; font-weight: bold">html</span> <span style="color: #7D9029">lang</span><span style="color: #666666">=</span><span style="color: #BA2121">&quot;en&quot;</span>&gt;
@@ -33,7 +28,7 @@ a mobile-friendly page with a full-screen canvas.</p>
 &lt;/<span style="color: #008000; font-weight: bold">head</span>&gt;
 &lt;<span style="color: #008000; font-weight: bold">body</span>&gt;
     &lt;<span style="color: #008000; font-weight: bold">canvas</span>&gt;&lt;/<span style="color: #008000; font-weight: bold">canvas</span>&gt;
-    &lt;<span style="color: #008000; font-weight: bold">script</span> <span style="color: #7D9029">src</span><span style="color: #666666">=</span><span style="color: #BA2121">&quot;filament.js&quot;</span>&gt;&lt;/<span style="color: #008000; font-weight: bold">script</span>&gt;
+    &lt;<span style="color: #008000; font-weight: bold">script</span> <span style="color: #7D9029">src</span><span style="color: #666666">=</span><span style="color: #BA2121">&quot;//unpkg.com/filament/filament.js&quot;</span>&gt;&lt;/<span style="color: #008000; font-weight: bold">script</span>&gt;
     &lt;<span style="color: #008000; font-weight: bold">script</span> <span style="color: #7D9029">src</span><span style="color: #666666">=</span><span style="color: #BA2121">&quot;//unpkg.com/gl-matrix@2.8.1/dist/gl-matrix-min.js&quot;</span>&gt;&lt;/<span style="color: #008000; font-weight: bold">script</span>&gt;
     &lt;<span style="color: #008000; font-weight: bold">script</span> <span style="color: #7D9029">src</span><span style="color: #666666">=</span><span style="color: #BA2121">&quot;triangle.js&quot;</span>&gt;&lt;/<span style="color: #008000; font-weight: bold">script</span>&gt;
 &lt;/<span style="color: #008000; font-weight: bold">body</span>&gt;
@@ -206,7 +201,9 @@ code to the top of the render method.</p>
 <span style="color: #008000; font-weight: bold">const</span> radians <span style="color: #666666">=</span> <span style="color: #008000">Date</span>.now() <span style="color: #666666">/</span> <span style="color: #666666">1000</span>;
 <span style="color: #008000; font-weight: bold">const</span> transform <span style="color: #666666">=</span> mat4.fromRotation(mat4.create(), radians, [<span style="color: #666666">0</span>, <span style="color: #666666">0</span>, <span style="color: #666666">1</span>]);
 <span style="color: #008000; font-weight: bold">const</span> tcm <span style="color: #666666">=</span> <span style="color: #008000; font-weight: bold">this</span>.engine.getTransformManager();
-tcm.setTransform(tcm.getInstance(<span style="color: #008000; font-weight: bold">this</span>.triangle), transform);
+<span style="color: #008000; font-weight: bold">const</span> inst <span style="color: #666666">=</span> tcm.getInstance(<span style="color: #008000; font-weight: bold">this</span>.triangle);
+tcm.setTransform(inst, transform);
+inst.<span style="color: #008000; font-weight: bold">delete</span>();
 
 <span style="color: #408080; font-style: italic">// Render the frame.</span>
 <span style="color: #008000; font-weight: bold">this</span>.renderer.render(<span style="color: #008000; font-weight: bold">this</span>.swapChain, <span style="color: #008000; font-weight: bold">this</span>.view);
@@ -231,8 +228,8 @@ displays. It also adjusts the camera frustum accordingly.</p>
 </pre></div>
 
 <p>You should now have a spinning triangle! The completed JavaScript is available
-<a href="tutorial_triangle.js">here</a>. In the next tutorial, we'll take a closer look at Filament
-materials and 3D rendering.</p>
+<a href="tutorial_triangle.js">here</a>.</p>
+<p>In the <a href="tutorial_redball.html">next tutorial</a>, we'll take a closer look at Filament materials and 3D rendering.</p>
 
 </body>
 </html>

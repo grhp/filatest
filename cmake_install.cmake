@@ -1,4 +1,4 @@
-# Install script for directory: /Users/prideout/github/filament/web/samples
+# Install script for directory: /Users/prideout/github/filament/web/docs
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

@@ -1,20 +1,18 @@
 <!DOCTYPE html>
 <html lang="en"><head>
-<link href="favicon.png" rel="icon" type="image/x-icon" />
 <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700|Tangerine:700|Inconsolata" rel="stylesheet">
 <link href="main.css" rel="stylesheet" type="text/css">
 </head>
 <body class="verbiage">
 <div class="demo_frame"><iframe src="demo_redball.html"></iframe><a href="demo_redball.html">&#x1F517;</a></div>
-<p>This tutorial will describe how to create the redball demo, introducing you to materials and
+<p>This tutorial will describe how to create the <strong>redball</strong> demo, introducing you to materials and
 textures.</p>
-<p>You'll need to use a couple command-line tools: <code>matc</code> and <code>cmgen</code>. You can find these in the
+<p>For starters, create a text file called <code>redball.html</code> and copy over the HTML that we used in the
+<a href="tutorial_triangle.html">previous tutorial</a>. Change the last script tag from <code>triangle.js</code> to <code>redball.js</code>.</p>
+<p>Next you'll need to get a couple command-line tools: <code>matc</code> and <code>cmgen</code>. You can find these in the
 appropriate <a href="//github.com/google/filament/releases">Filament release</a>. You should choose the
 archive that corresponds to your development machine rather than the one for web.</p>
 <h2>Define plastic material</h2>
-<p>The <code>matc</code> tool consumes a text file containing a high-level description of a PBR material, and
-produces a binary material package that contains shader code and associated metadata. For more
-information, see the official document describing the <a href="">Filament Material System</a>.</p>
 <p>Let's try out <code>matc</code>. Create the following file in your favorite text editor and call it
 <code>plastic.mat</code>.</p>
 <div class="highlight" style="background: #f8f8f8"><pre style="line-height: 125%"><span></span>material {
@@ -56,9 +54,7 @@ produce two cubemap files: a mipmapped IBL and a blurry skybox.</p>
 well as a text file with spherical harmonics coefficients. Move the KTX files into your project
 folder. You can discard the text file because the IBL KTX contains these coefficients in its
 metadata.</p>
-<h2>Create HTML and JavaScript</h2>
-<p>Create a text file called <code>redball.html</code> and copy over the HTML that we used in the <a href="tutorial_triangle.html">previous
-tutorial</a>. Change the last script tag from <code>triangle.js</code> to <code>redball.js</code>.</p>
+<h2>Create JavaScript</h2>
 <p>Next, create <code>redball.js</code> with the following content.</p>
 <div class="highlight" style="background: #f8f8f8"><pre style="line-height: 125%"><span></span>Filament.init([ <span style="color: #BA2121">&#39;plastic.filamat&#39;</span>, <span style="color: #BA2121">&#39;pillars_2k_ibl.ktx&#39;</span>, <span style="color: #BA2121">&#39;pillars_2k_skybox.ktx&#39;</span> ], () =&gt; {
   <span style="color: #408080; font-style: italic">// Create some global aliases to enums for convenience.</span>
@@ -271,8 +267,9 @@ Replace <strong>create skybox</strong> with the following.</p>
 scene.setSkybox(skybox);
 </pre></div>
 
-<p>That's it, we now have a shiny red ball floating in an environment! The complete JavaScript
-file is available <a href="tutorial_redball.js">here</a>.</p>
+<p>That's it, we now have a shiny red ball floating in an environment! The complete JavaScript file is
+available <a href="tutorial_redball.js">here</a>.</p>
+<p>In the <a href="tutorial_suzanne.html">next tutorial</a>, we'll take a closer look at textures and interaction.</p>
 
 </body>
 </html>
